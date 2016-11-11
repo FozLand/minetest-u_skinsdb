@@ -2,6 +2,14 @@
 
 -- Copyright (c) 2012 cornernote, Dean Montgomery
 -- License: GPLv3
+-- Boilerplate to support localized strings if intllib mod is installed.
+local S
+if intllib then
+	S = intllib.Getter()
+else
+	S = function(s) return s end
+end
+
 u_skins = {}
 u_skins.modpath = minetest.get_modpath("u_skins")
 u_skins.file = minetest.get_worldpath().."/u_skins.mt"
@@ -62,29 +70,29 @@ unified_inventory.register_page("u_skins", {
 		
 		local formspec = ("background[0.06,0.99;7.92,7.52;ui_misc_form.png]"
 			.."image[0,.75;1,2;"..u_skins.u_skins[name].."_preview.png]"
-			.."label[6,.5;Raw texture:]"
+			.."label[6,.5;"..S("Raw texture")..":]"
 			.."image[6,1;2,1;"..u_skins.u_skins[name]..".png]")
 				
 		local meta = u_skins.meta[u_skins.u_skins[name]]
 		if meta then
 			if meta.name ~= "" then
-				formspec = formspec.."label[2,.5;Name: "..minetest.formspec_escape(meta.name).."]"
+				formspec = formspec.."label[2,.5;"..S("Name")..": "..minetest.formspec_escape(meta.name).."]"
 			end
 			if meta.author ~= "" then
-				formspec = formspec.."label[2,1;Author: "..minetest.formspec_escape(meta.author).."]"
+				formspec = formspec.."label[2,1;"..S("Author")..": "..minetest.formspec_escape(meta.author).."]"
 			end
 			if meta.license ~= "" then
-				formspec = formspec.."label[2,1.5;License: "..minetest.formspec_escape(meta.license).."]"
+				formspec = formspec.."label[2,1.5;"..S("License")..": "..minetest.formspec_escape(meta.license).."]"
 			end
 			if meta.description ~= "" then --what's that??
-				formspec = formspec.."label[2,2;Description: "..minetest.formspec_escape(meta.description).."]"
+				formspec = formspec.."label[2,2;"..S("Description")..": "..minetest.formspec_escape(meta.description).."]"
 			end
 		end
 		local page = 0
 		if u_skins.pages[name] then
 			page = u_skins.pages[name]
 		end
-		formspec = formspec .. "button[.75,3;6.5,.5;u_skins_page$"..page..";Change]"
+		formspec = formspec .. "button[.75,3;6.5,.5;u_skins_page$"..page..";"..S("Change").."]"
 		return {formspec=formspec}
 	end,
 })
@@ -95,6 +103,9 @@ unified_inventory.register_button("u_skins", {
 })
 
 -- Create all of the skin-picker pages.
+
+
+local dropdown_values = {}
 
 u_skins.generate_pages = function(texture)
 	local page = 0
@@ -129,9 +140,17 @@ u_skins.generate_pages = function(texture)
 		if page_next >= total_pages then
 			page_next = 0
 		end
+		local page_list = ""
+		dropdown_values = {}
+		for pg=1, total_pages do
+			local pagename = S("Page").." "..pg.."/"..total_pages
+			dropdown_values[pagename] = pg
+			if pg > 1 then page_list = page_list.."," end
+			page_list = page_list..pagename
+		end
 		formspec = (formspec
 			.."button[0,3.8;1,.5;u_skins_page$"..page_prev..";<<]"
-			.."button[.75,3.8;6.5,.5;u_skins_null;Page "..page.."/"..total_pages.."]"
+			.."dropdown[1,3.65;6.5,.5;u_skins_selpg;"..page_list..";"..page.."]"
 			.."button[7,3.8;1,.5;u_skins_page$"..page_next..";>>]")
 		
 		unified_inventory.register_page("u_skins_page$"..(page - 1), {
@@ -155,10 +174,18 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			u_skins.update_player_skin(player)
 			u_skins.file_save = true
 			unified_inventory.set_inventory_formspec(player, "u_skins")
+			return
 		elseif current[1] == "u_skins_page" then
 			u_skins.pages[player:get_player_name()] = current[2]
 			unified_inventory.set_inventory_formspec(player, "u_skins_page$"..current[2])
+			return
 		end
+	end
+	if fields.u_skins_selpg then
+		page = dropdown_values[fields.u_skins_selpg]
+		u_skins.pages[player:get_player_name()] = page
+		unified_inventory.set_inventory_formspec(player, "u_skins_page$"..(page-1))
+		return
 	end
 end)
 
